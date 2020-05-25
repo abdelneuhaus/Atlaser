@@ -447,15 +447,15 @@ class Viewer(QtWidgets.QMainWindow):
 
         # self.v_layout_right.addWidget(self.z_sl)
 
-        self.v_layout_right.addWidget(self.channel_sl)
+        # self.v_layout_right.addWidget(self.channel_sl)
 
         # self.v_layout_right.addWidget(self.zoom_sl)
 
-        self.v_layout_right.addWidget(self.brain_sl)
+        # self.v_layout_right.addWidget(self.brain_sl)
 
         self.v_layout_right.addWidget(self.lum_sl)
 
-        self.v_layout_right.addWidget(self.contrast_sl)
+        # self.v_layout_right.addWidget(self.contrast_sl)
 
         #self.v_layout_right.addWidget(self.image_zoom)
 
@@ -1255,7 +1255,7 @@ class AtlasExplorer(Viewer):
         self.pic = self.apply_contrast(self.slice_image.img, value)
 
         self.apply_brightness(self.lum_sl.value())
-
+        
 
 
     def apply_brightness(self, value):
@@ -1300,6 +1300,8 @@ class AtlasExplorer(Viewer):
     @staticmethod
 
     def apply_contrast(img, value):
+        
+        self.rot_sl.setValue(self.rot_sl.value())
 
         def contrast_lut(v):
 
@@ -1318,7 +1320,6 @@ class AtlasExplorer(Viewer):
             pv *= m     # Go back to original scale
 
             return pv
-
 
 
         pic = np.array(img, dtype=np.float32)

@@ -947,8 +947,6 @@ class AtlasExplorer(Viewer):
 
             return
 
-        # self.slice_image.img = self.apply_transf(self.slice_image.dw_img)
-
         self.pic = np.array(self.apply_transf(self.slice_image.dw_img))
 
         # The old transformation is no longer valid for the inset display and cell selection
@@ -1097,7 +1095,7 @@ class AtlasExplorer(Viewer):
         self.update_atlas(self.slice_sl.value())
 
 
-
+    ### AJOUT PAR LE GROUPE ###
     def undo(self):
         """
             Suppression des doublons affichés à l'écran. Se fait automatiquement quand on dessine un autre point que celui qui est en double.
@@ -1235,7 +1233,7 @@ class AtlasExplorer(Viewer):
         return contrast_lut(pic)
 
 
-### AJOUT PAR LE GROUPE ###
+    ### AJOUT PAR LE GROUPE ###
     def next_slice(self):
 
         self.slice_sl.setValue(self.c_slice + 1)

@@ -1,0 +1,57 @@
+Dans ce fichier sont indiqués les modifications et ajouts effectués dans le code. Pour chaque fichier, nous avons mis la ligne et ce que nous avons modifiés pour que ce soit plus facile lors de lecture du code. Ce qui a été touché par nous est indiqué par AJOUT PAR LE GROUPE ou MODIFICATION PAR LE GROUPE.
+
+Remarque : certains éléments sont moins commentés que d'autres car le rapport contient ces descriptions.
+
+
+#####################################################################################################
+
+
+GUI.PY
+
+202 - 214 : bouton rotation
+
+293 - 297 : esthétique des ronds dessinés à l'écran
+
+341 - 350 : esthétique de la croix
+
+682 : initialisation de l'attribut de rotation
+
+689 - 699 : divers ajouts et initialisations d'attributs crées
+
+828 - 891 : fonction export_points
+
+1033 - 1039 / 1051 - 1080 : fonction cell_clicked
+
+1098 - 1116 : fonction undo
+
+1172 - 1205 : fonctions update et select_tool (outil de sélection non fini)
+
+1236 - 1304 : problème de la luminosité qui se réinitialise lorsque l'on fait une autre action
+
+1545 - 1557 : fonction help (manuel d'aide)
+
+1778 - 1795 : fonction check_duplicate
+
+1798 - 1821 : fonction get_parent
+
+1834 : ajout du logo
+
+
+#####################################################################################################
+
+
+CONTROLS.PY
+
+287 - 390 : classe LabeledCircleWidget
+
+
+#####################################################################################################
+
+
+NANOZOOMER.PY
+
+218 - 228 : fonction resize_ndpi()
+
+
+
+

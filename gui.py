@@ -1,52 +1,25 @@
 import sys
-
 import os
-
 import logging
-
 from logging.handlers import RotatingFileHandler
-
 import numpy as np
-
 import pandas as pd
 
 from PyQt5 import QtCore, QtWidgets, QtGui, Qt
-
 import pyqtgraph.opengl as gl
-
 import pyqtgraph as pg
 
 from PIL import Image
-
 from PIL import ImageEnhance
 
 import json
-
 import cv2
-
 from pathlib import Path
-
-from controls import TreeModel, LabeledSlider, EditViewBox, Transform, SliceImage, LabeledCircleWidget
-
-from atlas import read_ontology, id_colors, color_atlas, get_atlas
-
-import csv
-
 from collections import defaultdict
 
-# try:
-
-#     import javabridge
-
-#     import bioformats as bf
-
-# except ImportError:
-
-#     print('Bioformat not installed. Will not be able to open slide scanner files. '
-
-#           'See https://pythonhosted.org/python-bioformats/ for installation instructions')
-
-
+from controls import TreeModel, LabeledSlider, EditViewBox, Transform, SliceImage, LabeledCircleWidget
+from atlas import read_ontology, id_colors, color_atlas, get_atlas
+import csv
 
 
 
@@ -59,8 +32,6 @@ class Viewer(QtWidgets.QMainWindow):
         super(Viewer, self).__init__()  # Calling the parent class __init__ method
 
         self.setAttribute(QtCore.Qt.WA_DeleteOnClose)
-
-
 
         # Logging
 
@@ -82,8 +53,6 @@ class Viewer(QtWidgets.QMainWindow):
 
         sys.excepthook = handle_exception
 
-
-
         self._logger.info('Initializing the window')
 
         # Menu bar
@@ -92,10 +61,6 @@ class Viewer(QtWidgets.QMainWindow):
 
         self.file_menu.addAction('&Open data', self.select_data_file, QtCore.Qt.CTRL + QtCore.Qt.Key_O)
 
-        # self.file_menu.addAction('&Save workspace', self.save_transf, QtCore.Qt.CTRL + QtCore.Qt.Key_S)
-
-        # self.file_menu.addAction('&Load workspace', self.load_transf, QtCore.Qt.CTRL + QtCore.Qt.Key_L)
-
         self.file_menu.addAction('&Export points', self.export_points, QtCore.Qt.CTRL + QtCore.Qt.Key_E)
 
         self.file_menu.addAction('&Quit', self.close, QtCore.Qt.CTRL + QtCore.Qt.Key_Q)
@@ -103,8 +68,6 @@ class Viewer(QtWidgets.QMainWindow):
         self.edit_menu = QtWidgets.QMenu('&Edit', self)
 
         self.edit_menu.addAction('&Undo', self.undo, QtCore.Qt.CTRL + QtCore.Qt.Key_Z)
-
-        # self.edit_menu.addAction('&Clear transformation', self.clear_transf, QtCore.Qt.CTRL + QtCore.Qt.ALT + QtCore.Qt.Key_C)
 
         self.edit_menu.addAction('Clear cells', self.clear_cells)
         
@@ -119,12 +82,9 @@ class Viewer(QtWidgets.QMainWindow):
         self.menuBar().addMenu(self.help_menu)
 
 
-
         # MAIN LAYOUT
 
         self.main_layout = QtWidgets.QHBoxLayout()
-
-
 
         # create a main widget
 
@@ -140,11 +100,8 @@ class Viewer(QtWidgets.QMainWindow):
 
         self.setCentralWidget(self.main_widget)
 
-
-
         # LAYOUTS
 
-	    #sépare ecran noir et menu scroll
         self.h_splitter = QtWidgets.QSplitter(QtCore.Qt.Horizontal)
 
         self.right_widget = QtWidgets.QWidget(self)
@@ -162,18 +119,8 @@ class Viewer(QtWidgets.QMainWindow):
 
 
         # WIDGETS
-
-
-
-        # Slider for z and c -stack and zoom level
-
-        #self.z_sl = LabeledSlider('Z slice')
-
-        #self.z_sl.setSingleStep(1)
-
-        #self.z_sl.setEnabled(False)
-
-        #self.z_sl.valueChanged.connect(self.z_change)
+        
+        # Slider for channel choice
 
         self.channel_sl = LabeledSlider('Channel')
 
@@ -183,15 +130,7 @@ class Viewer(QtWidgets.QMainWindow):
 
         self.channel_sl.setEnabled(False)
 
-        # self.zoom_sl = LabeledSlider('Resolution level')
-
-        # self.zoom_sl.valueChanged.connect(self.zoom_change)
-
-        # self.zoom_sl.setSingleStep(1)
-
-        # self.zoom_sl.setRange(0, 4)
-
-        # self.zoom_sl.setEnabled(False)
+        # Brain slice slider
 
         self.brain_sl = LabeledSlider('Brain slice')
 
@@ -203,7 +142,7 @@ class Viewer(QtWidgets.QMainWindow):
 
         self.brain_sl.setEnabled(False)
 
-        # Sliders for luminosity and contrast
+        # Slider for luminosity
 
         self.lum_sl = LabeledSlider('Brightness')
 
@@ -214,6 +153,8 @@ class Viewer(QtWidgets.QMainWindow):
         self.lum_sl.valueChanged.connect(self.luminosity_change)
 
         self.lum_sl.setEnabled(False)
+
+        # Slider for contrast
 
         self.contrast_sl = LabeledSlider('Contrast')
 
@@ -243,6 +184,8 @@ class Viewer(QtWidgets.QMainWindow):
 
         self.slice_sl.valueChanged.connect(self.update_atlas)
 
+        # Slider for atlas opacity
+
         self.alpha_sl = LabeledSlider('Atlas opacity',)
 
         self.alpha_sl.setRange(0, 100)
@@ -253,20 +196,25 @@ class Viewer(QtWidgets.QMainWindow):
 
         self.alpha_sl.valueChanged.connect(self.atlas_alpha)
 
-        # self.trans_sl = LabeledSlider('Translation')
 
         # Transformation sliders
+
+        ### AJOUT PAR LE GROUPE ###
+        # Image rotation widget
+
+        self.rot_sl = LabeledCircleWidget('Image rotation', factor = 1)    # Création du bouton circulaire pour la rotation
+
+        self.rot_sl.setRange(0, 360)   # les valeurs vont de 0 à 3600 divisé par le facteur de dessus (permet d'avoir plus de précision)
+
+        self.rot_sl.setSingleStep(1)    # on définit de combien en combien on se déplace
+
+        self.rot_sl.valueChanged.connect(self.sl_rot_changed)   # on lie le bouton à la fonction de rotation définit plus bas
         
-        # Circle widget to rotate the image
-        self.rot_sl = LabeledCircleWidget('Image rotation', factor = 1)
+        self.rot_sl.setValue(90)    # On fixe la valeur à 90° pour que l'image soit alignée avec l'atlas
+        ###########################
 
-        self.rot_sl.setRange(0, 360)
 
-        self.rot_sl.setSingleStep(1)
-
-        self.rot_sl.valueChanged.connect(self.sl_rot_changed)
-
-        self.rot_sl.setValue(90)
+        # Scale attribute (no widget and function used)
 
         self.scale_sl = LabeledSlider('Scale', factor = 1000)
 
@@ -308,8 +256,6 @@ class Viewer(QtWidgets.QMainWindow):
 
         # Buttons
 
-        # self.register_pb = QtWidgets.QPushButton('&Register')
-
         self.fliplr_pb = QtWidgets.QPushButton('Flip &left-right')
 
         self.fliplr_pb.setCheckable(True)
@@ -322,8 +268,6 @@ class Viewer(QtWidgets.QMainWindow):
 
         self.flipud_pb.clicked.connect(self.flip_ud)
 
-        # self.register_pb.clicked.connect(self.align)
-
         # Graph widgets
 
         self.anat_image = pg.ImageItem()
@@ -333,8 +277,6 @@ class Viewer(QtWidgets.QMainWindow):
         self.template_image = pg.ImageItem()
 
         self.zoom_image = pg.ImageItem()
-
-        # self.anat_image.setCompositionMode(QtGui.QPainter.CompositionMode_Plus)
 
         self.atlas_image.setCompositionMode(QtGui.QPainter.CompositionMode_Plus)
 
@@ -348,9 +290,11 @@ class Viewer(QtWidgets.QMainWindow):
 
         self.cell_scatter = pg.ScatterPlotItem()
 
-        self.cell_pen = pg.mkPen(color=(242, 142, 85, 200), width=1.5)
-
+        ### MODIFICATION PAR LE GROUPE ###
+        self.cell_pen = pg.mkPen(color=(242, 142, 85, 200), width=1.5)  # On change la couleur des ronds dessinés quand on fait une sélection ainsi
+                                                                        # que la largeur pour qu'ils soient bien visibles
         self.cell_brush = pg.mkBrush(None)
+        ############################
 
         self.cell_scatter.setBrush(self.cell_brush)
 
@@ -374,25 +318,13 @@ class Viewer(QtWidgets.QMainWindow):
 
         self.vb_anat.invertY()
 
-        # Ajoute l'image à l'atlas = ils ne font plus qu'un
+        # Adding the image, the atlas and the circle tool for selection into the left windows
 
         self.vb_anat.addItem(self.anat_image)
 
         self.vb_anat.addItem(self.atlas_image)
 
         self.vb_anat.addItem(self.cell_scatter)
-
-        # self.vb_atlas = self.g_layout.addViewBox(row=1, col=0)
-
-        # self.vb_atlas.setAspectLocked()
-
-        # self.vb_atlas.invertY()
-
-        # self.vb_atlas.addItem(self.template_image)
-
-        # self.vb_anat.setXLink(self.vb_atlas)
-
-        # self.vb_anat.setYLink(self.vb_atlas)
 
         # Zoom inset on the high quality image
 
@@ -404,10 +336,11 @@ class Viewer(QtWidgets.QMainWindow):
 
         self.vb_inset.setAspectLocked(True)
 	
-	    # Modification du pointeur
+	    # Cross pointer
+        ### MODIFICATION PAR LE GROUPE ###
+        cursor_pen = pg.mkPen(color=(242, 142, 85), width=2)    # Modification de la couleur et de la largueur de la croix (plus fine et couleur moins voyante)
 
-        cursor_pen = pg.mkPen(color=(242, 142, 85), width=2)
-
+        ### Modifications des coordonnées de dessins des lignes : les quatre traits de la croix se croisent désormais et la croix est fermé
         self._h_line_l = QtWidgets.QGraphicsLineItem(0, 2, 2, 2)
 
         self._h_line_r = QtWidgets.QGraphicsLineItem(1, 2, 4, 2)
@@ -415,6 +348,7 @@ class Viewer(QtWidgets.QMainWindow):
         self._v_line_u = QtWidgets.QGraphicsLineItem(2, 3, 2, 4)
 
         self._v_line_d = QtWidgets.QGraphicsLineItem(2, 0, 2, 3)
+        ###################################
 
         self._h_line_l.setParentItem(self.zoom_image)
 
@@ -434,10 +368,6 @@ class Viewer(QtWidgets.QMainWindow):
 
         self.vb_inset.enableAutoRange()
 
-        # self.vb_atlas.addItem(self._v_line)
-
-        # self.vb_atlas.addItem(self._h_line)
-
 
         # LAYOUT setup
 
@@ -445,19 +375,7 @@ class Viewer(QtWidgets.QMainWindow):
 
         self.v_layout_right.addWidget(self.tree)
 
-        # self.v_layout_right.addWidget(self.z_sl)
-
-        # self.v_layout_right.addWidget(self.channel_sl)
-
-        # self.v_layout_right.addWidget(self.zoom_sl)
-
-        # self.v_layout_right.addWidget(self.brain_sl)
-
         self.v_layout_right.addWidget(self.lum_sl)
-
-        # self.v_layout_right.addWidget(self.contrast_sl)
-
-        #self.v_layout_right.addWidget(self.image_zoom)
 
         self.h_atlas.addWidget(self.orientation_cb)
 
@@ -471,9 +389,6 @@ class Viewer(QtWidgets.QMainWindow):
 
         self.v_layout_right.addWidget(self.rot_sl)
 
-        # Plus besoin d'afficher le widget pour modifier la résolution étant donné que la valeur est fixée à 1
-        # self.v_layout_right.addWidget(self.scale_sl)
-
         self.h_layout_buttons.addWidget(self.fliplr_pb)
 
         self.h_layout_buttons.addWidget(self.flipud_pb)
@@ -481,8 +396,6 @@ class Viewer(QtWidgets.QMainWindow):
         self.v_layout_right.addLayout(self.h_layout_buttons)
 
         self.v_layout_right.addWidget(self.cell_select_cb)
-
-        # self.h_layout_right.addWidget(self.register_pb)
 
         self.v_layout_right.addLayout(self.h_layout_right)
 
@@ -496,10 +409,8 @@ class Viewer(QtWidgets.QMainWindow):
 
 
 
-        # Some shortcuts
-        
-        # Déplacement de slice en slice avec les flèches gauche et droite
-
+        # Some shortcuts : moving slice by slice (atlas)
+    
         atlas_fwd = QtWidgets.QShortcut(QtCore.Qt.Key_Right, self.main_widget)
 
         atlas_fwd.activated.connect(self.next_slice)
@@ -735,7 +646,6 @@ class AtlasExplorer(Viewer):
 
         self.p_max = 2**16
 
-        # Change the number value to open by default a specific atlas (0: coronal, 1: horizontal, 2: sagittal)
         self._c_orient = 0
 
         self._sel_regions = {}
@@ -752,8 +662,6 @@ class AtlasExplorer(Viewer):
 
         self.transf_raw = self._transf_raw
 
-        # Modifie la taille de la croix à l'ouverture, mais se réinitialise à l'ouverture de l'image.
-        # Néanmoins, la fenêtre est plus petite, mais la sélection n'est plus la même (ne pointe plus sur la même chose)
         self._raw_inset = np.zeros((5, 5), dtype=np.uint8)
 
         self.raw_inset = self._raw_inset
@@ -761,8 +669,6 @@ class AtlasExplorer(Viewer):
         self._transf = Transform()
 
         self.transf = self._transf
-
-	    # Modifie le niveau de zoom de l'image de droite : plus tu augmentes, plus le zoom baisse (plus de pixel à l'écran donc moins zoomé)
 
         self._inset_size = 1000
 
@@ -772,17 +678,25 @@ class AtlasExplorer(Viewer):
 
         self.actions = []
 
+        ### AJOUT PAR LE GROUPE ###
         self.rot_sl.setValue(90)
+        ###########################
 
         self.scale_sl.setValue(int(self.transf.scale * self.scale_sl.factor))
 
         # Capture mouse movements to scroll the inset
 
+        ### MODIFICATION ET AJOUTS PAR LE GROUPE ###
         self._proxy = pg.SignalProxy(self.vb_anat.scene().sigMouseMoved, rateLimit=0.1, delay=.1, slot=self.mouse_moved)
 
-        self.setWindowTitle('Atlaser Sotfware')
+        # On modifie la fenêtre qui repère les mouvements de la souris : c'est la fenêtre de gauche et non plus la fenetre en bas à gauche (qui n'existe plus)
 
-        self.help_menu = None
+        self.setWindowTitle('Atlaser Sotfware') # On met un titre à la fenetre
+
+        self.help_menu = None   # On initialise à None le manuel d'aide (qui n'est pas ouvert par défaut)
+
+        self.myROIdata = [] # On initialise la liste stockant les coordonnées sauvegardées avec l'outil de sélection implémenté
+        ###################################
 
 
 
@@ -804,11 +718,8 @@ class AtlasExplorer(Viewer):
     def draw_cross(self):
 
         """
-
         Draw the cross cursor on the inset zoom picture
-
         Place it at the center of the inset, which depends on the exact size of the self._raw_inset array
-
         """
 
         # inset size
@@ -847,25 +758,15 @@ class AtlasExplorer(Viewer):
     def mouse_moved(self, pos):
 
         """
-
         Update the zoom inset from the raw image when the mouse cursor moves over the low resolution atlas aligned image
-
-
         Parameters
-
         ----------
-
         pos: list of SceneEvents
-
             Contains the mouse position (in scene coordinates, will need conversion)
-
         """
 
         # FIXME: When too close to the edges, not possible to get a precise position
-        # Ne marche pas car :
-            # Zone de clic = zone de l'atlas
-            # Si on sort la souris de l'atlas, ce n'est plus précis car on ne peut plus cliquer dans tous les cas
-
+        
         if not self.cell_select_cb.isChecked():
 
             return
@@ -913,18 +814,9 @@ class AtlasExplorer(Viewer):
     def closeEvent(self, a0: QtGui.QCloseEvent) -> None:
 
         """
-
         closeEvent of Viewer.
-
         Perform some cleanup
-
         """
-
-        # if self.bioformat:
-
-        #     javabridge.kill_vm()
-
-        #     self._logger.info('Kill the Java VM')
 
         a0.accept()
 
@@ -932,68 +824,75 @@ class AtlasExplorer(Viewer):
 
 
 
+    ### AJOUT PAR LE GROUPE ###
     def export_points(self):
+        """
+        Sauvegarde les données stockées dans le dictionnaire cells
+        Save cells dictionnary data
+        """
         try : 
-            for i in range(0, len(self.cells)):
+            for i in range(0, len(self.cells)):     # On parcourt le dictionnaire
 
-                if (self.cells[i]['Region'] == 'None'):
+                if (self.cells[i]['Region'] == 'None'):     # Certaines régions stockées n'ont pas de parent
 
-                    d = defaultdict(str)
+                    d = defaultdict(str)    # Initialisation du dictionnaire stockant les string (librairie collections)
 
-                    d[1] = ""
+                    d[1] = ""   # Le parent 1 (colonne 1) prend par défaut la valeur vide
 
-                    d[2] = ""
+                    d[2] = ""   # Idem pour la deuxième colonne
 
-                    d = dict(d)
+                    d = dict(d) # On convertit d en dictionnaire classique
 
-                    self.cells[i].update(d)
+                    self.cells[i].update(d)  # On ajoute à cells, pour chaque structure, seulement les deux derniers parents
 
-                    self.cells[i]['structure'] = self.cells[i].pop('structure')
+                    self.cells[i]['structure'] = self.cells[i].pop('structure') # On retire la clé structure qui correspond à toute l'arborescence de la structure
 
-                    del self.cells[i]['Region']
+                    del self.cells[i]['Region'] # On supprime la clé région car on n'a plus besoin de celle-ci pour la sauvegarde
                     
 
                 else:
 
-                    d = defaultdict(str)
+                    d = defaultdict(str)    # Initialisation du dictionnaire stockant les string (librairie collections)
 
-                    d[1] = self.cells[i]['Region'][len(self.cells[i]['Region']) - 2]
+                    d[1] = self.cells[i]['Region'][len(self.cells[i]['Region']) - 2]    # On récupère le parent le plus proche de la structure enregistrée dans cells
 
-                    d[2] = self.cells[i]['Region'][len(self.cells[i]['Region']) - 3]
+                    d[2] = self.cells[i]['Region'][len(self.cells[i]['Region']) - 3]    # On récupère le parent de la structure stockée dans d[1]
 
-                    d = dict(d)
+                    d = dict(d)     # idem qu'avant
 
-                    self.cells[i].update(d)
+                    self.cells[i].update(d)     # idem qu'avant
 
-                    self.cells[i]['structure'] = self.cells[i].pop('structure')
+                    self.cells[i]['structure'] = self.cells[i].pop('structure')     # idem qu'avant
 
-                    del self.cells[i]['Region']
+                    del self.cells[i]['Region']     # idem qu'avant
                     
 
-            im_path = Path(self.data_path)
+            im_path = Path(self.data_path)  # On initialise le chemin de sauvegarde
 
-            path = im_path.parent / f'cells_{im_path.stem}.csv'
+            path = im_path.parent / f'cells_{im_path.stem}.csv'     # On définit le chemin de sauvegarde et le nom du fichier à la sortie
+                                                                    # Le fichier aura le même nom que l'image 
+                                                                    # et est sauvegardé dans le même dossier que celle-ci (souhait de l'utilisateur)
 
-            keys = self.cells[i].keys()
+            keys = self.cells[i].keys()     # On récupère les clés du dictionnaire cells mis-à-jour au-dessus
 
-            with open(path, 'a', newline='') as file:
+            with open(path, 'a', newline='') as file:   # Pour chaque élément de cells, on écrit dans le fichier CSV. 
+                                                        # Le mode a permet d'ajouter dans un fichier déjà existant
 
                 dict_writer = csv.DictWriter(file, keys)
 
                 dict_writer.writerows(self.cells)
 
-            self.cells = []
+            self.cells = []     # On vide le dictionnaire après une sauvegarde.
         
         
-        except KeyError:
+        except KeyError:    # On évite les erreurs de clés pouvant arriver avec des régions sans parent
 
             pass
+        ##########################
 
             
 
     
-
-
     # Displays the image in the right windows when cell mode selection is activated
     
     def apply_transf(self, img, scale=True, trans=True):
@@ -1102,6 +1001,7 @@ class AtlasExplorer(Viewer):
 
 
 
+    ### MODIFICATION PAR LE GROUPE ###
     def cell_clicked(self, x, y, mx, my):
 
         dx, dy = self.convert_mouse_pos(x, y, mx, my)
@@ -1132,11 +1032,13 @@ class AtlasExplorer(Viewer):
         
         reg = l_reg[1]  # nom de la structure récupérée
 
-        parent_reg = get_parent(self.onto, l_reg[0])
+        ### AJOUT PAR LE GROUPE ###
+        parent_reg = get_parent(self.onto, l_reg[0])    # On récupère la liste de tous les parents
 
-        if parent_reg == None:
+        if parent_reg == None:  # S'il n'y a pas de parents, on convertit en string None pour le stockage dans le dictionnaire de string
 
             parent_reg = str(None)
+        ###########################
 
         reg_ix = self.tree_model.match(self.tree_model.index(0, 0, QtCore.QModelIndex()), QtCore.Qt.DisplayRole, QtCore.QVariant(reg.abbr),
 
@@ -1148,22 +1050,21 @@ class AtlasExplorer(Viewer):
 
         self.tree.setCurrentIndex(reg_ix)
 
-        if self.cell_select_cb.isChecked():
-
-            #setOpacity(laValeurDeLaCase)
+        ### AJOUT ET MODIFICATIONS PAR LE GROUPE ###
+        if self.cell_select_cb.isChecked():     # Quand le mode de sélection est activé
 
             self.cells.append({'pos': (dx + 1, dy + 1), 'Region': parent_reg, 'structure': str(reg)})
+            # On stocke les coordonnées (+1 pour pouvoir tracer à l'écran sur le pixel choisi), la région et son arborescence et la structure cliquée (nom)
 
-            self.cell_pos.append((dx + 1, dy + 1))
+            self.cell_pos.append((dx + 1, dy + 1))  # On ajoute les coordonnées à la liste des points dessinés à l'écran
 
             self.actions.append(((self.cells.pop, self.cell_pos.pop), (-1, -1)))
 
-            self.cells = check_duplicate(self.cells)
+            self.cells = check_duplicate(self.cells)    # On contrôle les doublons dans cells
     
-            self.cell_scatter.setData(pos = self.cell_pos)
+            self.cell_scatter.setData(pos = self.cell_pos)  # On dessine les ronds enregistrés
 
-            self._logger.debug(f'Coordonnées enregistrées: {self.cells[0]}')
-
+            # On contrôle qu'il n'y ait pas de doublons dessinés
             for i in range(0, len(self.cell_pos) - 1):
 
                 if (dx + 1, dy + 1) == self.cell_pos[i]:
@@ -1171,15 +1072,14 @@ class AtlasExplorer(Viewer):
                     self.cell_pos.remove(self.cell_pos[i])
 
                     self.cell_scatter.setData(pos = self.cell_pos)
-            
+
+            # On contrôle qu'il n'y ait pas de doublons stockés dans le dictionnaire cells qui va être exporté à la fin          
             for i in range(0, len(self.cells) - 1):
 
                 if (dx + 1, dy + 1) == self.cells[i]['pos']:
                     
                     self.cells.remove(self.cells[i])
-
-                    self._logger.debug("Supression du point dans self.cells réalisée")
-
+        ##############################################
 
 
 
@@ -1199,16 +1099,23 @@ class AtlasExplorer(Viewer):
 
 
     def undo(self):
+        """
+            Suppression des doublons affichés à l'écran. Se fait automatiquement quand on dessine un autre point que celui qui est en double.
+            Accessible avec CTRL + Z. A utiliser en fin de manipulation pour avoir un dictionnaire de données propre et sans doublons
 
+            Delete duplicates drawn circles on screen. It is automatic when the user clicks on another area that the one with duplicates.
+            Can be used manually with CTRL + Z. Should be used when finishing the cells selection to clean data that will be save
+        """
         actions, args = self.actions.pop(-1)
 
         for a, ix in zip(actions, args):
 
             a(ix)
         
-        self.cell_pos = check_duplicate(self.cell_pos)
+        self.cell_pos = check_duplicate(self.cell_pos)  # On check les doublons dans la liste contenant les points dessinés à l'écran et on les supprime
 
-        self.cell_scatter.setData(pos = self.cell_pos)
+        self.cell_scatter.setData(pos = self.cell_pos)  # On redessine tout le dictionnaire (update)
+    ###################################
 
 
 
@@ -1262,6 +1169,8 @@ class AtlasExplorer(Viewer):
 
         self.anat_image.setLevels((0, self.slice_image.p_max * (2 - value / 50)))
 
+
+
     ### AJOUT PAR LE GROUPE ### 
     # def update(self, roi):    
     #     roidata = []
@@ -1274,21 +1183,21 @@ class AtlasExplorer(Viewer):
 
     # def select_tool(self):
 
-    #     #Création de l'outil de selection, sur l'image et d'une taille correcte
+    #     # Création de l'outil de selection, sur l'image et d'une taille correcte
     #     myROI = pg.ROI([1000,1000], [350,500])
 
-    #     #Ajout de l'outil sur la fenetre qui contient l'image
+    #     # Ajout de l'outil sur la fenetre qui contient l'image
     #     self.vb_anat.addItem(myROI)
 
-    #     #Gère le scaling horizontal
+    #     # Gère le scaling horizontal
     #     myROI.addScaleHandle([1, 0.5], [0.5, 0.5])
     #     myROI.addScaleHandle([0, 0.5], [0.5, 0.5])
 
-    #     #Gère le scaling vertical
+    #     # Gère le scaling vertical
     #     myROI.addScaleHandle([0.5, 0], [0.5, 1])
     #     myROI.addScaleHandle([0.5, 1], [0.5, 0])
 
-    #     #Gère le scaling horizontal et vertical
+    #     # Gère le scaling horizontal et vertical
     #     myROI.addScaleHandle([1, 1], [0, 0])
     #     myROI.addScaleHandle([0, 0], [1, 1])
 
@@ -1297,12 +1206,12 @@ class AtlasExplorer(Viewer):
     #     self.update(myROI)
     #############################
 
+
+
     @staticmethod
 
     def apply_contrast(img, value):
         
-        self.rot_sl.setValue(self.rot_sl.value())
-
         def contrast_lut(v):
 
             m = 2**16   # Max in 16 bits
@@ -1321,18 +1230,17 @@ class AtlasExplorer(Viewer):
 
             return pv
 
-
         pic = np.array(img, dtype=np.float32)
 
         return contrast_lut(pic)
 
 
-
+### AJOUT PAR LE GROUPE ###
     def next_slice(self):
 
         self.slice_sl.setValue(self.c_slice + 1)
 
-        self.apply_brightness(self.lum_sl.value())
+        self.apply_brightness(self.lum_sl.value())  # Evite le problème de reset de la valeur en appliquant la valeur actuelle de luminosité
 
 
 
@@ -1341,14 +1249,14 @@ class AtlasExplorer(Viewer):
 
         self.slice_sl.setValue(self.c_slice - 1)
 
-        self.apply_brightness(self.lum_sl.value())
+        self.apply_brightness(self.lum_sl.value())  # Evite le problème de reset de la valeur en appliquant la valeur actuelle de luminosité
 
 
     def flip_lr(self):
 
         self.transf.flipped_lr = not self.transf.flipped_lr
 
-        self.apply_brightness(self.lum_sl.value())
+        self.apply_brightness(self.lum_sl.value())  # Evite le problème de reset de la valeur en appliquant la valeur actuelle de luminosité
 
 
 
@@ -1356,7 +1264,7 @@ class AtlasExplorer(Viewer):
 
         self.transf.flipped_ud = not self.transf.flipped_ud
 
-        self.apply_brightness(self.lum_sl.value())
+        self.apply_brightness(self.lum_sl.value())  # Evite le problème de reset de la valeur en appliquant la valeur actuelle de luminosité
 
 
 
@@ -1374,7 +1282,7 @@ class AtlasExplorer(Viewer):
 
         self.transf.add_translation((x_shift, y_shift))
 
-        self.apply_brightness(self.lum_sl.value())
+        self.apply_brightness(self.lum_sl.value())  # Evite le problème de reset de la valeur en appliquant la valeur actuelle de luminosité
 
 
 
@@ -1386,7 +1294,7 @@ class AtlasExplorer(Viewer):
 
         self.update_transf_sliders()
 
-        self.apply_brightness(self.lum_sl.value())
+        self.apply_brightness(self.lum_sl.value())  # Evite le problème de reset de la valeur en appliquant la valeur actuelle de luminosité
 
 
 
@@ -1394,26 +1302,14 @@ class AtlasExplorer(Viewer):
 
         self.transf.rotation = value / self.rot_sl.factor
 
-        self.apply_brightness(self.lum_sl.value())
-
-
-
-
-    # def sl_scale_changed(self, value):
-
-    #     if value == 1:
-
-    #         return
-
-    #     self.transf.scale = value / self.scale_sl.factor
+        self.apply_brightness(self.lum_sl.value())  # Evite le problème de reset de la valeur en appliquant la valeur actuelle de luminosité
+    ##################################
 
 
 
     def update_transf_sliders(self):
 
-        self.rot_sl.setValue(int(self.transf.rotation))# * self.rot_sl.factor))
-
-        # self.scale_sl.setValue(int(self.transf.scale * self.scale_sl.factor))
+        self.rot_sl.setValue(int(self.transf.rotation))
 
         self.fliplr_pb.setChecked(bool(self.transf.flipped_lr))
 
@@ -1534,21 +1430,12 @@ class AtlasExplorer(Viewer):
     @data_path.setter
 
     def data_path(self, value):
-
         """
-
         When the data path changes, open the corresponding data file
-
-
-
         Parameters
-
         ----------
-
         value: str
-
             Path to the data as selected from the dialog box
-
         """
 
         self._data_path = value
@@ -1657,13 +1544,19 @@ class AtlasExplorer(Viewer):
 
 
 
+    ### AJOUT PAR LE GROUPE ###
     # Helping manuel to get shortcuts and tips
 
     def help(self):
+        """
+            Ouvre une image contenant les raccourcis du logiciel utilisables par l'utilisateur
+            Open an image with all the shortcuts the user can use
+        """
         
-        img = cv2.imread("helpManuel.png")
+        img = cv2.imread("helpManuel.png")  # ouverture de l'image manuel
         
-        cv2.imshow('Help manuel', img)
+        cv2.imshow('Help manuel', img)  # affichage de l'image à l'écran
+    ############################
 
 
 
@@ -1677,16 +1570,7 @@ class AtlasExplorer(Viewer):
 
         self.cell_pos = []
 
-        # On fixe le scale à 1 (et on ne transforme plus cette valeur comme ci-dessous)
         self.transf.scale = 1
-
-        # if self.transf.scale != 1:
-
-        #     self.transf.scale = min(atlas_shape[0] / self.slice_image.img.width,
-
-        #                             atlas_shape[1] / self.slice_image.img.height)
-
-        #     self.update_transf_sliders()
 
         self.update_img()
 
@@ -1694,11 +1578,7 @@ class AtlasExplorer(Viewer):
 
     def update_n_slices(self, n_zslices, n_channels, n_res_levels, n_brainslices):
 
-        # self.z_sl.setRange(0, n_zslices - 1)
-
         self.channel_sl.setRange(0, n_channels - 1)
-
-        # self.zoom_sl.setRange(0, n_res_levels - 1)
 
         self.brain_sl.setRange(0, n_brainslices - 1)
 
@@ -1729,11 +1609,8 @@ class AtlasExplorer(Viewer):
     def load_image(self):
 
         """
-
         Load the image defined in self.data_path
-
         Loading procedure depends on format. Handles tif through PIL, vsi through python-bioformats
-
         """
 
         # Load the imge
@@ -1748,17 +1625,9 @@ class AtlasExplorer(Viewer):
 
         self.slice_image.load()
 
-
-
         # Reset contrast and brightness
 
-        # self.contrast_sl.setValue(50)
-
-        # self.lum_sl.setValue(50)
-
         if self.slice_image.is_tiff:
-
-            # self.z_sl.setEnabled(False)
 
             self.channel_sl.setEnabled(False)
 
@@ -1766,17 +1635,9 @@ class AtlasExplorer(Viewer):
 
         else:
 
-            # self.z_sl.setEnabled(True)
-
-            # self.zoom_sl.setEnabled(True)
-
             self.channel_sl.setEnabled(True)
 
-            # self.z_sl.setValue(self.slice_image.c_zslice)
-
             self.channel_sl.setValue(self.slice_image.c_channel)
-
-            # self.zoom_sl.setValue(self.slice_image.c_zoom)
 
         if self.slice_image.is_ndpis:
 
@@ -1900,40 +1761,6 @@ class AtlasExplorer(Viewer):
 
 
 
-    # def align(self):
-
-    #     c_pos = self.slice_sl.value()
-
-    #     template = self.get_slice(self.template, slice(max(0, c_pos-3), min(c_pos+4, self.template.shape[-1])))
-
-    #     template = template.transpose((0, 2, 1)).astype(self.pic.dtype)
-
-    #
-
-    #     new_img = self._raw_img.copy()
-
-    #     new_img = new_img.rotate(self.transf.rotation, expand=True)
-
-    #     w, h = new_img.size
-
-    #     x_shift, y_shift = self.transf.translation
-
-    #     buffer_img = Image.new(self._raw_img.mode, (w+abs(x_shift), h+abs(y_shift)))
-
-    #     buffer_img.paste(new_img, (x_shift, y_shift))
-
-    #     new_img.close()
-
-    #     self.r_im = register(template, np.array(buffer_img).T, self.transf)
-
-    #     buffer_img.close()
-
-    #     self.anat_image.setImage(self.r_im)
-
-
-
-
-
 def handle_exception(exc_type, exc_value, exc_traceback):
 
     """Handle uncaugt exceptions and print in logger."""
@@ -1950,7 +1777,13 @@ def handle_exception(exc_type, exc_value, exc_traceback):
 
 
 
+### AJOUT PAR LE GROUPE ###
 def check_duplicate(list):
+    """
+        Parcourt une liste et renvoie une liste sans doublons
+
+        Takes a list and return a list without duplicate values
+    """
 
     res = [] 
 
@@ -1961,10 +1794,16 @@ def check_duplicate(list):
             res.append(i)
 
     return res 
+###########################
 
 
-
+### AJOUT PAR LE GROUPE ###
 def get_parent(json_tree, target_id):
+    """
+        Permet à partir d'un arbre stocké dans un fichier JSON et un id cible d'obtenir toute l'arborescence de la région ayant l'id cible
+
+        From a JSON file tree data and a target ID, return the target region and its parent
+    """
 
     for element in json_tree:
 
@@ -1981,6 +1820,7 @@ def get_parent(json_tree, target_id):
                 if check_child:
 
                     return [element['name']] + check_child
+###########################
 
 
 
@@ -1991,7 +1831,7 @@ if __name__ == '__main__':
 
     window = AtlasExplorer()
 
-    window.setWindowIcon(QtGui.QIcon("logo.png"))
+    window.setWindowIcon(QtGui.QIcon("logo.png"))   # Ajout d'un logo au logiciel
 
     window.show()
 

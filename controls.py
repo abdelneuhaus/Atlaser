@@ -1,38 +1,19 @@
 from PyQt5 import QtWidgets, QtGui, QtCore
-
 from pyqtgraph import ViewBox
 
 import numpy as np
-
 from math import sqrt
 
 import logging
-
 from pathlib import Path
 
 from PIL import Image
-
+from skimage.util import img_as_uint
+from skimage.color import rgb2gray
 import nanozoomer as nz
-
-try:
-
-    import javabridge
-
-    import bioformats as bf
-
-except ImportError:
-
-    print('Bioformat not installed. Will not be able to open slide scanner files. '
-
-          'See https://pythonhosted.org/python-bioformats/ for installation instructions')
-
-
-
 
 
 HORIZONTAL_HEADERS = ('Acronym', 'Name', 'Color')
-
-
 
 
 
@@ -55,17 +36,14 @@ class Region(object):
         self.data = (abbr, name, color)
 
 
-
     def __len__(self):
 
         return len(HORIZONTAL_HEADERS)
 
 
-
     def __repr__(self):
 
         return f'{self.abbr}: {self.name}'
-
 
 
     __str__ = __repr__
@@ -85,11 +63,9 @@ class TreeItem(object):
         self.child_items = []
 
 
-
     def appendChild(self, item):
 
         self.child_items.append(item)
-
 
 
     def child(self, row):
@@ -97,17 +73,14 @@ class TreeItem(object):
         return self.child_items[row]
 
 
-
     def childCount(self):
 
         return len(self.child_items)
 
 
-
     def columnCount(self):
 
         return len(self.region)
-
 
 
     def data(self, column):
@@ -121,11 +94,9 @@ class TreeItem(object):
             return QtCore.QVariant()
 
 
-
     def parent(self):
 
         return self.parent_item
-
 
 
     def row(self):
@@ -149,11 +120,8 @@ class TreeItem(object):
 
 
 class TreeModel(QtCore.QAbstractItemModel):
-
     """
-
     A model to display regions
-
     """
 
     def __init__(self, parent=None, onto=[]):
@@ -216,8 +184,6 @@ class TreeModel(QtCore.QAbstractItemModel):
 
             return QtCore.QVariant()
 
-
-
         item = index.internalPointer()
 
         if role == QtCore.Qt.DisplayRole:
@@ -229,8 +195,6 @@ class TreeModel(QtCore.QAbstractItemModel):
             if item:
 
                 return item
-
-
 
         return QtCore.QVariant()
 
@@ -250,8 +214,6 @@ class TreeModel(QtCore.QAbstractItemModel):
 
                 pass
 
-
-
         return QtCore.QVariant()
 
 
@@ -262,8 +224,6 @@ class TreeModel(QtCore.QAbstractItemModel):
 
             return QtCore.QModelIndex()
 
-
-
         if not parent.isValid():
 
             parent_item = self.rootItem
@@ -271,8 +231,6 @@ class TreeModel(QtCore.QAbstractItemModel):
         else:
 
             parent_item = parent.internalPointer()
-
-
 
         child_item = parent_item.child(row)
 
@@ -292,25 +250,17 @@ class TreeModel(QtCore.QAbstractItemModel):
 
             return QtCore.QModelIndex()
 
-
-
         child_item = index.internalPointer()
 
         if not child_item:
 
             return QtCore.QModelIndex()
 
-
-
         parent_item = child_item.parent()
-
-
 
         if parent_item == self.rootItem:
 
             return QtCore.QModelIndex()
-
-
 
         return self.createIndex(parent_item.row(), 0, parent_item)
 
@@ -334,9 +284,12 @@ class TreeModel(QtCore.QAbstractItemModel):
 
 
 
-
+### AJOUT PAR LE GROUPE ###
 class LabeledCircleWidget(QtWidgets.QWidget):
-        
+    """
+        Classe permettant de créer un objet de type QWidget étant un bouton circulaire (dial)
+        Class allowing to create a QWidget type objetc being a circular button (dial)
+    """
 
     def __init__(self, title ='', factor = 1):
 
@@ -344,23 +297,25 @@ class LabeledCircleWidget(QtWidgets.QWidget):
 
         self._title = title
 
-        self.title_label = QtWidgets.QLabel(self.title)
+        self.title_label = QtWidgets.QLabel(self.title)     # stockage du titre du bouton
 
-        self.value_label = QtWidgets.QLineEdit('')
+        self.value_label = QtWidgets.QLineEdit('')          # permet d'afficher la valeur
 
         self.value_label.setValidator(QtGui.QDoubleValidator())
 
-        self.value_label.returnPressed.connect(self.update_value)
+        self.value_label.returnPressed.connect(self.update_value)   # liaison entre valeur choisie et mise à jour du bouton
 
         self.value_label.setFixedWidth(50)
 
-        self.dial = QtWidgets.QDial()
+        self.dial = QtWidgets.QDial()   # création de l'objet
 
         self.dial.valueChanged.connect(self.value_changed)
 
         self.dial.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
 
         self.value_label.setSizePolicy(QtWidgets.QSizePolicy.Minimum, QtWidgets.QSizePolicy.Fixed)
+
+        # Création des éléments permettant de stocker le widget
 
         self.v_layout = QtWidgets.QVBoxLayout()
 
@@ -375,6 +330,8 @@ class LabeledCircleWidget(QtWidgets.QWidget):
         self.v_layout.addLayout(self.h_layout)
 
         self.setLayout(self.v_layout)
+
+        # Gestion des valeurs prises par le bouton
 
         self.valueChanged = self.dial.valueChanged
 
@@ -430,7 +387,7 @@ class LabeledCircleWidget(QtWidgets.QWidget):
     def value_changed(self, value: int) -> None:
 
         self.value_label.setText(str(value))
-
+#########################
 
 
 
@@ -511,8 +468,6 @@ class LabeledSlider(QtWidgets.QWidget):
 
 
     def value_changed(self, value: int) -> None:
-
-        # self.slider.valueChanged(value)
 
         self.value_label.setText(str(value/self.factor))
 
@@ -1049,11 +1004,8 @@ class SliceImage(QtCore.QObject):
     def load(self):
 
         """
-
         Load the image defined in self.path
-
         Loading procedure depends on format. Handles tif through PIL, vsi through python-bioformats
-
         """
 
         if self.path is None:
@@ -1092,179 +1044,17 @@ class SliceImage(QtCore.QObject):
 
             self.stack_loader = self.vsi_stack_loader
 
-        elif self.path.suffix in {'.ndpis'}:
+        ### AJOUT PAR LE GROUPE ###
+        # elif self.path.suffix in {'.ndpis'}:
 
-            self.stack_loader = self.ndpis_stack_loader
+        #    self.open_whole_img()
 
-            self._is_ndpis = True
-
-            self.ndpis_stack_loader(0, 4, 0, 0)
+        # elif self.path.suffix in {'.ndpi'}:
+            
+        #     self.open_ndpi()
 
         self.p_max = self.pic.max()
-
-
-
-
-
-    # Images of different format are handled through different functions whose signature is identical
-
-    # It should be loader(self, z, res, channel, brain_slice) to be able to specify:
-
-    # the z, the resolution, the channel and the brain slice for formats that handle multiple slice per file
-
-    # The specific stack loader is then assigned to self.stack_loader
-
-    # The rest of the image handling should be ~transparent
-
-
-
-    # Slide scanner vsi files
-
-    def slice_slide_scanner(self, c=0):
-
-        pic = self._img_vsi[..., c]
-
-        self._raw_img = Image.fromarray(pic)
-
-        self._dw_img = self._raw_img.copy()
-
-        self.img = self._dw_img.copy()
-
-
-
-    def load_slide_scanner_image(self, z=0, serie=4):
-
-        self.downfactor = 1
-
-        self._img_vsi = bf.load_image(self.path.as_posix(), t=0, series=serie, z=z)
-
-        metadata = bf.get_omexml_metadata(self.path.as_posix())
-
-        o = bf.OMEXML(metadata)
-
-        n_zslices = o.image_count
-
-        self.n_slices_known.emit(n_zslices, self._img_vsi.shape[-1], 4, 1)
-
-        self.slice_slide_scanner()
-
-
-
-    def vsi_stack_loader(self, z=0, res=4, channel=0, brain_slice=None):
-
-        if z != self.c_zslice or res != self.c_zoom:
-
-            self.load_slide_scanner_image(z, res)
-
-        if channel != self.c_channel:
-
-            self.slice_slide_scanner(channel)
-
-
-
-    # Nanozoomer ndpis files
-
-    def ndpis_stack_loader(self, z, res, channel, brain_slice):
-
-        """
-
-        Stack loader for ndpis file
-
-
-
-        Parameters
-
-        ----------
-
-        z
-
-        res
-
-        channel
-
-        brain_slice
-
-
-
-        Returns
-
-        -------
-
-
-
-        """
-
-        if self._prms == {}:
-
-            self._prms = nz.parse_ndpis(self.path)
-
-            images = [self._prms[f'Image{ix}'] for ix in range(int(self._prms['NoImages']))]
-
-            self._ndpis_files = [self._prms['path'] / im for im in images]
-
-            # FIXME: If no image contains dapi this will fail
-
-            dapi_path = [p for p, n in zip(self._ndpis_files, images) if 'dapi' in n.lower()][0]
-
-            dapi_im = nz.open_im(dapi_path)
-
-            self._bboxes = nz.get_bboxes(dapi_im)
-
-            self.n_slices_known.emit(1, len(images), dapi_im.level_count, self._bboxes.shape[0])
-
-            dapi_im.close()
-
-            self._logger.debug(f'{self._bboxes}')
-
-        parent_path = self.path.parent
-
-        img_name = self.path.stem
-
-        base_path = parent_path / img_name
-
-        if not base_path.is_dir():
-
-            base_path.mkdir()
-
-        channel_path = base_path / f'ch{channel}'
-
-        if not channel_path.is_dir():
-
-            channel_path.mkdir()
-
-        res_path = channel_path / f'res_{res}'
-
-        if not res_path.is_dir():
-
-            res_path.mkdir()
-
-        img_path = res_path / f'{img_name}-{brain_slice}.tiff'
-
-        if img_path.is_file():
-
-            # Load existing file
-
-            self._raw_img = Image.open(img_path)
-
-        else:
-
-            # Create and save
-
-            im = nz.open_im(self._ndpis_files[channel])
-
-            raw_crop = nz.crop(im, self._bboxes[brain_slice, :], res)
-
-            self._raw_img = raw_crop
-
-            raw_crop.save(img_path)
-
-            im.close()
-
-        self._dw_img = self._raw_img.copy()
-
-        self.img = self._dw_img.copy()
-
-        # Load new image
+        ############################
 
 
 
@@ -1272,7 +1062,9 @@ class SliceImage(QtCore.QObject):
 
         pass
 
-# #Martin
+
+
+    ### AJOUT PAR LE GROUPE ###
     # def open_whole_img(self):
 
     #     channel = ["DAPI", "TRITC"]
@@ -1309,11 +1101,14 @@ class SliceImage(QtCore.QObject):
 
     #     crop_im = nz.crop_from_dapi(self._prms, res = 3)
 
-    # #Martin
+
+
     # def open_ndpi(self):
         
     #     nz.resize_ndpi(self.path)
 
-    # #Martin
+
+
     # def crop_with_roi(self, roi, im):
     #     return
+    ############################

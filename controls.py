@@ -1069,6 +1069,7 @@ class SliceImage(QtCore.QObject):
 
     #     channel = ["DAPI", "TRITC"]
 
+    #     #Stockage des infos du ndpis file dans une list attribut de la classe
     #     if self._prms == {}:
 
     #         self._prms = nz.parse_ndpis(self.path)
@@ -1077,6 +1078,7 @@ class SliceImage(QtCore.QObject):
 
     #         self._ndpis_files = [self._prms['path'] / im for im in images]
 
+    #     #Création des folders qui contiendront les images crop
     #     parent_path = self.path.parent
 
     #     img_name = self.path.stem
@@ -1099,6 +1101,7 @@ class SliceImage(QtCore.QObject):
 
     #         channel_path_tritc.mkdir()
 
+    #     #Crop des images avec les fonctions du nanozoomer.py
     #     crop_im = nz.crop_from_dapi(self._prms, res = 3)
 
 

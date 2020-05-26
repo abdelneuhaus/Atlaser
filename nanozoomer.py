@@ -218,6 +218,8 @@ def crop_from_dapi(prms, res=4):
 ### AJOUT PAR LE GROUPE ###
 # def resize_ndpi(im_path):
 
+#     #Création d'une tiff image à partir de la whole slide ndpi
+#     #besoin de downscale d'au moins un facteur 2³ pour pouvoir afficher l'image à l'écran
 #     im = ops.OpenSlide(im_path.as_posix())
 
 #     dimlvl = im.level_dimensions

@@ -1169,10 +1169,12 @@ class AtlasExplorer(Viewer):
 
 
 
-    ### AJOUT PAR LE GROUPE ### 
-    # def update(self, roi):    
+    # ## AJOUT PAR LE GROUPE ### 
+    # def update(self, roi):   
+    #     #List that contains the position of the ROI 
     #     roidata = []
     #     roidata.append(roi.pos())
+    #     #times 8 for each position to negate the downscaled tiff
     #     roidata.append(roi.size() * 8)
     #     self.myROIdata = roidata
     #     print (self.myROIdata)

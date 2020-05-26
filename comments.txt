@@ -24,15 +24,15 @@ GUI.PY
 
 1098 - 1116 : fonction undo
 
-1172 - 1205 : fonctions update et select_tool (outil de sélection non fini)
+1172 - 1207 : fonctions update et select_tool (outil de sélection non fini)
 
-1236 - 1304 : problème de la luminosité qui se réinitialise lorsque l'on fait une autre action
+1238 - 1306 : problème de la luminosité qui se réinitialise lorsque l'on fait une autre action
 
-1545 - 1557 : fonction help (manuel d'aide)
+1547 - 1559 : fonction help (manuel d'aide)
 
-1778 - 1795 : fonction check_duplicate
+1780 - 1797 : fonction check_duplicate
 
-1798 - 1821 : fonction get_parent
+1800 - 1823 : fonction get_parent
 
 1834 : ajout du logo
 
@@ -43,6 +43,8 @@ GUI.PY
 CONTROLS.PY
 
 287 - 390 : classe LabeledCircleWidget
+1067 - 1105 : fonction permettant l'ouverture de la NDPI en entière (open_whole_image())
+1109 - 1116 : fonctions permettant d'ouvrir le NDPI (chemin d'accès) et celle permettant d'utiliser l'outil de sélection (ROI)
 
 
 #####################################################################################################
@@ -50,8 +52,7 @@ CONTROLS.PY
 
 NANOZOOMER.PY
 
-218 - 228 : fonction resize_ndpi()
-
+218 - 230 : fonction resize_ndpi()
 
 
 
